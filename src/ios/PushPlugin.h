@@ -48,6 +48,7 @@
 
 @property (nonatomic, strong) NSDictionary *notificationMessage;
 @property BOOL isInline;
+@property BOOL coldstart;
 @property BOOL clearBadge;
 @property (nonatomic, strong) NSDictionary *handlerObj;
 

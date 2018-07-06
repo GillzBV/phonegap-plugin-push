@@ -11,6 +11,7 @@
 #import <objc/runtime.h>
 
 static char launchNotificationKey;
+static char coldstartKey;
 
 @implementation AppDelegate (notification)
 
@@ -34,6 +35,10 @@ static char launchNotificationKey;
 {
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(createNotificationChecker:)
                                                  name:@"UIApplicationDidFinishLaunchingNotification" object:nil];
+    [[NSNotificationCenter defaultCenter]addObserver:self
+                                            selector:@selector(pushPluginOnApplicationDidBecomeActive:)
+                                                name:UIApplicationDidBecomeActiveNotification
+                                              object:nil];
 
     // This actually calls the original init method over in AppDelegate. Equivilent to calling super
     // on an overrided method, this is not recursive, although it appears that way. neat huh?
@@ -44,11 +49,18 @@ static char launchNotificationKey;
 // to process notifications in cold-start situations
 - (void)createNotificationChecker:(NSNotification *)notification
 {
+    NSLog(@"createNotificationChecker");
     if (notification)
     {
         NSDictionary *launchOptions = [notification userInfo];
-        if (launchOptions)
+        if (launchOptions) {
+            NSLog(@"coldstart");
             self.launchNotification = [launchOptions objectForKey: @"UIApplicationLaunchOptionsRemoteNotificationKey"];
+            self.coldstart = [NSNumber numberWithBool:YES];
+        } else {
+            NSLog(@"not coldstart");
+            self.coldstart = [NSNumber numberWithBool:NO];
+        }
     }
 }
 
@@ -127,6 +139,32 @@ static char launchNotificationKey;
     }
 }
 
+- (void)pushPluginOnApplicationDidBecomeActive:(NSNotification *)notification {
+
+    NSLog(@"active");
+
+    UIApplication *application = notification.object;
+
+    PushPlugin *pushHandler = [self getCommandInstance:@"PushNotification"];
+    if (pushHandler.clearBadge) {
+        NSLog(@"PushPlugin clearing badge");
+        //zero badge
+        application.applicationIconBadgeNumber = 0;
+    } else {
+        NSLog(@"PushPlugin skip clear badge");
+    }
+
+    if (self.launchNotification) {
+        pushHandler.isInline = NO;
+        pushHandler.coldstart = [self.coldstart boolValue];
+        pushHandler.notificationMessage = self.launchNotification;
+        self.launchNotification = nil;
+        self.coldstart = [NSNumber numberWithBool:NO];
+        [pushHandler performSelectorOnMainThread:@selector(notificationReceived) withObject:pushHandler waitUntilDone:NO];
+        NSLog(@"pushHandler.coldstart %d", pushHandler.coldstart);
+    }
+}
+
 - (void)applicationDidBecomeActive:(UIApplication *)application {
 
     NSLog(@"active");
@@ -180,6 +218,16 @@ forRemoteNotification: (NSDictionary *) notification completionHandler: (void (^
 - (void)dealloc
 {
     self.launchNotification = nil; // clear the association and release the object
+    self.coldstart = nil;
 }
 
+- (NSNumber *)coldstart
+{
+    return objc_getAssociatedObject(self, &coldstartKey);
+}
+
+- (void)setColdstart:(NSNumber *)aNumber
+{
+    objc_setAssociatedObject(self, &coldstartKey, aNumber, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+}
 @end

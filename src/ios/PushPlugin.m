@@ -34,6 +34,7 @@
 
 @synthesize notificationMessage;
 @synthesize isInline;
+@synthesize coldstart;
 
 @synthesize callbackId;
 @synthesize notificationCallbackId;
@@ -413,6 +414,12 @@
             [additionalData setObject:[NSNumber numberWithBool:NO] forKey:@"foreground"];
         }
 
+        if (coldstart) {
+            [additionalData setObject:[NSNumber numberWithBool:YES] forKey:@"coldstart"];
+        } else {
+            [additionalData setObject:[NSNumber numberWithBool:NO] forKey:@"coldstart"];
+        }
+
         [message setObject:additionalData forKey:@"additionalData"];
 
         // send notification message
@@ -420,6 +427,7 @@
         [pluginResult setKeepCallbackAsBool:YES];
         [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
 
+        self.coldstart = NO;
         self.notificationMessage = nil;
     }
 }
