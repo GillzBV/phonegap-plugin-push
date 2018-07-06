@@ -56,10 +56,10 @@ static char coldstartKey;
         if (launchOptions) {
             NSLog(@"coldstart");
             self.launchNotification = [launchOptions objectForKey: @"UIApplicationLaunchOptionsRemoteNotificationKey"];
-            self.coldstart = [NSNumber numberWithBool:YES];
+            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"coldstart"];
         } else {
             NSLog(@"not coldstart");
-            self.coldstart = [NSNumber numberWithBool:NO];
+            [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"coldstart"];
         }
     }
 }
@@ -75,7 +75,7 @@ static char coldstartKey;
 }
 
 - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler {
-    NSLog(@"didReceiveNotification with fetchCompletionHandler");
+    NSLog(@"didReceiveNotification with fetchCompletionHandler state", application.applicationState);
 
     // app is in the foreground so call notification callback
     if (application.applicationState == UIApplicationStateActive) {
@@ -156,10 +156,10 @@ static char coldstartKey;
 
     if (self.launchNotification) {
         pushHandler.isInline = NO;
-        pushHandler.coldstart = [self.coldstart boolValue];
+        pushHandler.coldstart = [[NSUserDefaults standardUserDefaults] boolForKey:@"coldstart"];
         pushHandler.notificationMessage = self.launchNotification;
         self.launchNotification = nil;
-        self.coldstart = [NSNumber numberWithBool:NO];
+        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:@"coldstart"];
         [pushHandler performSelectorOnMainThread:@selector(notificationReceived) withObject:pushHandler waitUntilDone:NO];
         NSLog(@"pushHandler.coldstart %d", pushHandler.coldstart);
     }
@@ -182,6 +182,7 @@ static char coldstartKey;
         pushHandler.isInline = NO;
         pushHandler.notificationMessage = self.launchNotification;
         self.launchNotification = nil;
+        pushHandler.coldstart = [[NSUserDefaults standardUserDefaults] boolForKey:@"coldstart"];
         [pushHandler performSelectorOnMainThread:@selector(notificationReceived) withObject:pushHandler waitUntilDone:NO];
     }
 }
@@ -196,6 +197,7 @@ forRemoteNotification: (NSDictionary *) notification completionHandler: (void (^
     PushPlugin *pushHandler = [self getCommandInstance:@"PushNotification"];
     pushHandler.notificationMessage = userInfo;
     pushHandler.isInline = NO;
+    pushHandler.coldstart = [[NSUserDefaults standardUserDefaults] boolForKey:@"coldstart"];
     [pushHandler notificationReceived];
 
 
@@ -218,7 +220,7 @@ forRemoteNotification: (NSDictionary *) notification completionHandler: (void (^
 - (void)dealloc
 {
     self.launchNotification = nil; // clear the association and release the object
-    self.coldstart = nil;
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"coldstart"];
 }
 
 - (NSNumber *)coldstart
